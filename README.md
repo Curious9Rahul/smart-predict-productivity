@@ -114,3 +114,4 @@ Health check.
 1. *"We converted sequential app usage into a supervised learning problem by shifting app sequences to create the target variable."*
 2. *"We compared ensemble learning (Random Forest) with probabilistic sequence modelling (Markov Chain) for next-app prediction."*
 3. *"Future scope: replace synthetic data with real-time Android UsageStats API data."*
+
