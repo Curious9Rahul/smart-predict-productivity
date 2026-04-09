@@ -1,0 +1,53 @@
+{
+  "features": [
+    "prev_enc",
+    "time_enc",
+    "day_enc",
+    "cat_enc",
+    "usage_duration",
+    "battery_level",
+    "screen_on_time_today",
+    "session_number",
+    "is_weekend",
+    "switch_count_last_hour",
+    "notification_triggered"
+  ],
+  "app_map": {
+    "Instagram": 0,
+    "WhatsApp": 1,
+    "YouTube": 2,
+    "Chrome": 3,
+    "Gmail": 4,
+    "LinkedIn": 5,
+    "Netflix": 6
+  },
+  "time_map": {
+    "Morning": 0,
+    "Afternoon": 1,
+    "Evening": 2,
+    "Night": 3
+  },
+  "day_map": {
+    "Monday": 0,
+    "Tuesday": 1,
+    "Wednesday": 2,
+    "Thursday": 3,
+    "Friday": 4,
+    "Saturday": 5,
+    "Sunday": 6
+  },
+  "cat_map": {
+    "Social": 0,
+    "Productivity": 1,
+    "Entertainment": 2
+  },
+  "persona_map": {
+    "Night Binger": 0,
+    "Morning Worker": 1,
+    "Social Butterfly": 2,
+    "Balanced User": 3,
+    "Notification Addict": 4,
+    "Weekend Warrior": 5
+  },
+  "version": "2.0.0-Unified"
+}

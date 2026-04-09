@@ -1,0 +1,116 @@
+{
+  "user_001": {
+    "persona": "Night Binger",
+    "top_apps": {
+      "YouTube": 229,
+      "Instagram": 222,
+      "Netflix": 201
+    },
+    "peak_time": "Night",
+    "avg_duration": 33.4,
+    "avg_productivity_score": 19.1,
+    "distraction_rate_pct": 89.8,
+    "avg_battery_level": 40.5,
+    "avg_screen_time_day": 1414.3,
+    "avg_switch_count": 3.3,
+    "notification_rate_pct": 29.4,
+    "weekend_productivity": 18.8,
+    "weekday_productivity": 19.3,
+    "top_distraction_pattern": "Entertainment Binge"
+  },
+  "user_002": {
+    "persona": "Morning Worker",
+    "top_apps": {
+      "LinkedIn": 226,
+      "Chrome": 223,
+      "Gmail": 211
+    },
+    "peak_time": "Morning",
+    "avg_duration": 25.0,
+    "avg_productivity_score": 49.7,
+    "distraction_rate_pct": 34.1,
+    "avg_battery_level": 51.6,
+    "avg_screen_time_day": 1013.5,
+    "avg_switch_count": 3.3,
+    "notification_rate_pct": 32.9,
+    "weekend_productivity": 52.0,
+    "weekday_productivity": 48.3,
+    "top_distraction_pattern": "Social Loop"
+  },
+  "user_003": {
+    "persona": "Social Butterfly",
+    "top_apps": {
+      "YouTube": 243,
+      "Instagram": 231,
+      "WhatsApp": 216
+    },
+    "peak_time": "Evening",
+    "avg_duration": 29.0,
+    "avg_productivity_score": 26.6,
+    "distraction_rate_pct": 87.3,
+    "avg_battery_level": 42.2,
+    "avg_screen_time_day": 1194.3,
+    "avg_switch_count": 3.1,
+    "notification_rate_pct": 43.8,
+    "weekend_productivity": 26.9,
+    "weekday_productivity": 26.4,
+    "top_distraction_pattern": "Social Loop"
+  },
+  "user_004": {
+    "persona": "Balanced User",
+    "top_apps": {
+      "Chrome": 241,
+      "Gmail": 206,
+      "YouTube": 198
+    },
+    "peak_time": "Afternoon",
+    "avg_duration": 27.0,
+    "avg_productivity_score": 49.2,
+    "distraction_rate_pct": 25.3,
+    "avg_battery_level": 45.6,
+    "avg_screen_time_day": 1085.5,
+    "avg_switch_count": 3.2,
+    "notification_rate_pct": 27.7,
+    "weekend_productivity": 54.1,
+    "weekday_productivity": 46.2,
+    "top_distraction_pattern": "Entertainment Binge"
+  },
+  "user_005": {
+    "persona": "Notification Addict",
+    "top_apps": {
+      "WhatsApp": 231,
+      "Gmail": 219,
+      "Instagram": 181
+    },
+    "peak_time": "Morning",
+    "avg_duration": 23.5,
+    "avg_productivity_score": 40.7,
+    "distraction_rate_pct": 71.5,
+    "avg_battery_level": 48.8,
+    "avg_screen_time_day": 951.3,
+    "avg_switch_count": 3.3,
+    "notification_rate_pct": 48.6,
+    "weekend_productivity": 42.1,
+    "weekday_productivity": 39.8,
+    "top_distraction_pattern": "Social Loop"
+  },
+  "user_006": {
+    "persona": "Weekend Warrior",
+    "top_apps": {
+      "YouTube": 223,
+      "Chrome": 198,
+      "Netflix": 180
+    },
+    "peak_time": "Evening",
+    "avg_duration": 34.5,
+    "avg_productivity_score": 34.6,
+    "distraction_rate_pct": 60.7,
+    "avg_battery_level": 50.4,
+    "avg_screen_time_day": 1365.2,
+    "avg_switch_count": 3.4,
+    "notification_rate_pct": 22.0,
+    "weekend_productivity": 36.2,
+    "weekday_productivity": 33.6,
+    "top_distraction_pattern": "Entertainment Binge"
+  }
+}

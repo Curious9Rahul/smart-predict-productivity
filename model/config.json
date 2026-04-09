@@ -1,0 +1,97 @@
+{
+  "rf_features": [
+    "prev_enc",
+    "time_enc",
+    "day_enc",
+    "freq_enc",
+    "usage_duration",
+    "battery_level",
+    "screen_on_time_today",
+    "session_number",
+    "is_weekend",
+    "switch_count_last_hour",
+    "notification_triggered"
+  ],
+  "km_features": [
+    "usage_duration",
+    "prev_enc",
+    "time_enc",
+    "cat_enc",
+    "screen_on_time_today",
+    "switch_count_last_hour",
+    "battery_level",
+    "notification_triggered"
+  ],
+  "dist_features": [
+    "prev_enc",
+    "time_enc",
+    "day_enc",
+    "freq_enc",
+    "usage_duration",
+    "cat_enc",
+    "battery_level",
+    "screen_on_time_today",
+    "session_number",
+    "is_weekend",
+    "switch_count_last_hour",
+    "notification_triggered"
+  ],
+  "apps": [
+    "Instagram",
+    "WhatsApp",
+    "YouTube",
+    "Chrome",
+    "Gmail",
+    "LinkedIn",
+    "Netflix"
+  ],
+  "app_map": {
+    "Instagram": 0,
+    "WhatsApp": 1,
+    "YouTube": 2,
+    "Chrome": 3,
+    "Gmail": 4,
+    "LinkedIn": 5,
+    "Netflix": 6
+  },
+  "time_map": {
+    "Morning": 0,
+    "Afternoon": 1,
+    "Evening": 2,
+    "Night": 3
+  },
+  "day_map": {
+    "Monday": 0,
+    "Tuesday": 1,
+    "Wednesday": 2,
+    "Thursday": 3,
+    "Friday": 4,
+    "Saturday": 5,
+    "Sunday": 6
+  },
+  "freq_map": {
+    "Low": 0,
+    "Medium": 1,
+    "High": 2
+  },
+  "cat_map": {
+    "Social": 0,
+    "Productivity": 1,
+    "Entertainment": 2
+  },
+  "categories": {
+    "Social": [
+      "Instagram",
+      "WhatsApp",
+      "LinkedIn"
+    ],
+    "Productivity": [
+      "Gmail",
+      "Chrome"
+    ],
+    "Entertainment": [
+      "YouTube",
+      "Netflix"
+    ]
+  }
+}

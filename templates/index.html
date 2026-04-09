@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Digital Habit Coach</title>
+  <meta name="description" content="Behavioral intelligence system that predicts app usage, detects distraction loops, and actively improves your digital habits.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #0D0D17;
+      --card:    #13131F;
+      --card2:   #1A1A2E;
+      --border:  rgba(255,255,255,0.07);
+      --cyan:    #00E5FF;
+      --green:   #00E676;
+      --orange:  #FFAB40;
+      --red:     #FF5252;
+      --purple:  #7C4DFF;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: #fff; min-height: 100vh; }
+
+    /* ── Layout ── */
+    .shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+    .sidebar {
+      background: var(--card); border-right: 1px solid var(--border);
+      padding: 28px 16px; display: flex; flex-direction: column; gap: 4px;
+      position: sticky; top: 0; height: 100vh;
+    }
+    .logo { font-size: 18px; font-weight: 800; color: var(--cyan); padding: 0 8px 24px; letter-spacing: -0.5px; }
+    .logo span { color: #fff; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 11px 12px;
+      border-radius: 12px; cursor: pointer; font-size: 14px; color: rgba(255,255,255,0.5);
+      transition: all 0.2s; font-weight: 500; border: none; background: none; width: 100%;
+    }
+    .nav-item:hover  { color: #fff; background: rgba(255,255,255,0.05); }
+    .nav-item.active { color: var(--cyan); background: rgba(0,229,255,0.1); }
+    .nav-icon { font-size: 18px; }
+
+    .main { overflow-y: auto; padding: 36px 40px; }
+
+    /* ── Panels ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Header ── */
+    .page-header { margin-bottom: 28px; }
+    .page-title  { font-size: 26px; font-weight: 800; }
+    .page-sub    { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 24px;
+    }
+    .card-sm { padding: 18px; border-radius: 16px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+    /* ── Score Ring ── */
+    .score-wrap { display: flex; align-items: center; gap: 28px; }
+    .score-ring { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
+    .score-ring svg { transform: rotate(-90deg); }
+    .score-ring .track { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 10; }
+    .score-ring .fill  { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+    .score-num {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      font-size: 26px; font-weight: 800; line-height: 1;
+    }
+
+    /* ── Alert ── */
+    .alert {
+      display: none; align-items: flex-start; gap: 12px; padding: 14px 18px;
+      border-radius: 14px; margin-bottom: 20px; font-size: 14px; font-weight: 500;
+    }
+    .alert.danger  { background: rgba(255,82,82,0.12);  border: 1px solid rgba(255,82,82,0.4);  color: #FF8A80; }
+    .alert.warning { background: rgba(255,171,64,0.12); border: 1px solid rgba(255,171,64,0.4); color: #FFCC80; }
+    .alert.success { background: rgba(0,230,118,0.12);  border: 1px solid rgba(0,230,118,0.4);  color: #69F0AE; }
+    .alert.visible { display: flex; }
+
+    /* ── Stat chips ── */
+    .stat-chip { background: var(--card2); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+    .stat-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+    .stat-value { font-size: 22px; font-weight: 800; }
+
+    /* ── Bar ── */
+    .bar-wrap { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .bar-label { width: 80px; font-size: 13px; flex-shrink: 0; }
+    .bar-track  { flex: 1; height: 8px; background: rgba(255,255,255,0.07); border-radius: 8px; overflow: hidden; }
+    .bar-fill   { height: 100%; border-radius: 8px; transition: width 0.8s ease; }
+    .bar-val    { font-size: 12px; color: rgba(255,255,255,0.45); width: 36px; text-align: right; }
+
+    /* ── Button ── */
+    .btn {
+      padding: 14px 28px; border-radius: 14px; border: none; cursor: pointer;
+      font-family: inherit; font-weight: 700; font-size: 14px; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--cyan); color: #000; width: 100%; }
+    .btn-primary:hover { box-shadow: 0 0 24px rgba(0,229,255,0.4); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── Select / Dropdown ── */
+    .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+    .form-group { flex: 1; }
+    .form-label { font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 6px; display: block; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    select {
+      width: 100%; padding: 12px 14px; background: var(--card2); border: 1px solid var(--border);
+      border-radius: 12px; color: #fff; font-family: inherit; font-size: 14px; font-weight: 500;
+      outline: none; cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2300E5FF' viewBox='0 0 16 16'%3E%3Cpath d='m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center;
+    }
+    select:focus { border-color: var(--cyan); }
+
+    /* ── Prediction Result ── */
+    .result-card {
+      display: none; border-radius: 24px; padding: 28px; text-align: center;
+      margin-top: 20px; animation: fadeUp 0.4s ease;
+    }
+    .result-card.show { display: block; }
+    .result-emoji { font-size: 52px; margin-bottom: 4px; display: block; }
+    .result-app   { font-size: 30px; font-weight: 800; margin-bottom: 6px; }
+    .result-cat   { font-size: 13px; opacity: 0.7; margin-bottom: 14px; }
+    .confidence-pill {
+      display: inline-block; background: rgba(0,0,0,0.25); padding: 7px 18px;
+      border-radius: 40px; font-size: 14px; font-weight: 700;
+    }
+    .intervention-box {
+      display: none; margin-top: 16px; padding: 16px 20px;
+      background: rgba(0,0,0,0.15); border-radius: 16px; text-align: left;
+    }
+    .intervention-box.show { display: block; }
+    .iv-tag  { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; color: rgba(255,255,255,0.5); margin-bottom: 6px; }
+    .iv-text { font-size: 15px; font-weight: 600; }
+    .iv-sub  { font-size: 12px; opacity: 0.6; margin-top: 3px; }
+
+    /* ── Analytics Bars ── */
+    .cat-pills { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .cat-pill  { padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+
+    /* ── User cards ── */
+    .user-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .user-card {
+      border-radius: 16px; padding: 18px; cursor: pointer; border: 1.5px solid var(--border);
+      transition: all 0.2s; background: var(--card2);
+    }
+    .user-card:hover  { border-color: var(--cyan); }
+    .user-card.active { border-color: var(--cyan); background: rgba(0,229,255,0.08); }
+    .user-name  { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .user-badge { font-size: 11px; color: rgba(255,255,255,0.4); }
+
+    /* ── Distraction Meter ── */
+    .meter-ring { display: flex; justify-content: center; margin: 16px 0; }
+
+    /* ── Animations ── */
+    @keyframes fadeUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── App gradient map ── */
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">AI <span>Habit</span> Coach</div>
+    <button class="nav-item active" onclick="showPanel('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</button>
+    <button class="nav-item" onclick="showPanel('predict',this)"><span class="nav-icon">🧠</span> Prediction</button>
+    <button class="nav-item" onclick="showPanel('distraction',this)"><span class="nav-icon">⚠️</span> Distraction</button>
+    <button class="nav-item" onclick="showPanel('analytics',this)"><span class="nav-icon">📈</span> Analytics</button>
+    <button class="nav-item" onclick="showPanel('profiles',this)"><span class="nav-icon">👤</span> Profiles</button>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- ══════════════════ DASHBOARD ══════════════════ -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="page-header">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Real-time behavioral intelligence overview</div>
+      </div>
+
+      <!-- Alert -->
+      <div class="alert danger" id="dash-alert">
+        <span>🚨</span><span id="dash-alert-msg"></span>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:16px">
+        <!-- Score -->
+        <div class="card">
+          <div class="stat-label" style="margin-bottom:16px">Productivity Score</div>
+          <div class="score-wrap">
+            <div class="score-ring">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle class="track" cx="60" cy="60" r="50"/>
+                <circle class="fill" id="scoreCircle" cx="60" cy="60" r="50" stroke="#00E676" stroke-dasharray="314" stroke-dashoffset="314"/>
+              </svg>
+              <div class="score-num" id="scoreNum" style="color:#00E676">—</div>
+            </div>
+            <div>
+              <div style="font-size:20px;font-weight:800;margin-bottom:4px" id="scoreTrend">—</div>
+              <div style="font-size:13px;color:rgba(255,255,255,0.4)" id="behaviorType">Analyzing...</div>
+              <div style="margin-top:12px;font-size:12px;color:rgba(255,255,255,0.3)">Powered by K-Means Clustering</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Distraction Level -->
+        <div class="card" style="display:flex;flex-direction:column;justify-content:space-between">
+          <div class="stat-label">Distraction Level</div>
+          <div style="font-size:52px;text-align:center;margin:12px 0" id="distractEmoji">🔄</div>
+          <div style="text-align:center;font-size:22px;font-weight:800" id="distractLevel">—</div>
+          <div style="text-align:center;font-size:12px;color:rgba(255,255,255,0.35);margin-top:4px" id="distractPattern">Running analysis...</div>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid-3" style="margin-bottom:16px">
+        <div class="stat-chip"><div class="stat-label">Behavior Type</div><div class="stat-value" id="behaviorStat" style="font-size:16px">—</div></div>
+        <div class="stat-chip"><div class="stat-label">Last Prediction</div><div class="stat-value" id="lastPred" style="font-size:16px;color:var(--cyan)">—</div></div>
+        <div class="stat-chip"><div class="stat-label">Distraction Rate</div><div class="stat-value" id="distractRateStat" style="color:var(--red)">—</div></div>
+      </div>
+
+      <!-- Quick predict -->
+      <div class="card">
+        <div class="stat-label" style="margin-bottom:12px">Quick Predict</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Previous App</label>
+            <select id="dash_app">
+              <option>Instagram</option><option>WhatsApp</option><option>YouTube</option>
+              <option>Chrome</option><option>Gmail</option><option>LinkedIn</option><option>Netflix</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Time of Day</label>
+            <select id="dash_time">
+              <option>Morning</option><option>Afternoon</option><option>Evening</option><option selected>Night</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="dashPredBtn" onclick="dashQuickPredict()">⚡ Quick Predict</button>
+        <div id="dashResult" style="margin-top:14px;display:none;padding:14px;background:var(--card2);border-radius:12px;text-align:center">
+          <span id="dashResEmoji" style="font-size:28px"></span>
+          <span id="dashResApp"   style="font-size:18px;font-weight:700;margin-left:8px"></span>
+          <div id="dashResIv"     style="font-size:12px;color:var(--cyan);margin-top:6px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ PREDICTION ══════════════════ -->
+    <div class="panel" id="panel-predict">
+      <div class="page-header">
+        <div class="page-title">AI Prediction</div>
+        <div class="page-sub">Hybrid Random Forest + Markov Chain model</div>
+      </div>
+
+      <div class="card" style="max-width:520px">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Previous App</label>
+            <select id="p_app"><option>Instagram</option><option>WhatsApp</option><option>YouTube</option><option>Chrome</option><option>Gmail</option><option>LinkedIn</option><option>Netflix</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Usage Frequency</label>
+            <select id="p_freq"><option>Low</option><option selected>Medium</option><option>High</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Time of Day</label>
+            <select id="p_time"><option>Morning</option><option>Afternoon</option><option>Evening</option><option selected>Night</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Day of Week</label>
+            <select id="p_day"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="predBtn" onclick="runPredict()">✨ Predict Next App</button>
+
+        <div class="result-card" id="predResult">
+          <span class="result-emoji" id="resEmoji">📱</span>
+          <div class="result-app" id="resApp"></div>
+          <div class="result-cat" id="resCat"></div>
+          <div class="confidence-pill" id="resConf"></div>
+          <div class="intervention-box" id="resIv">
+            <div class="iv-tag">🧠 SMART INTERVENTION</div>
+            <div class="iv-text" id="ivText"></div>
+            <div class="iv-sub"  id="ivSub"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ DISTRACTION ══════════════════ -->
+    <div class="panel" id="panel-distraction">
+      <div class="page-header">
+        <div class="page-title">Distraction Detector</div>
+        <div class="page-sub">Sequence-based behavioral loop analysis</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="stat-label" style="margin-bottom:12px">App Sequence (last 5 apps)</div>
+          <p style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:16px">Select apps in the order you used them:</p>
+          <div id="seqSlots" style="display:flex;flex-direction:column;gap:8px"></div>
+          <button class="btn btn-primary" style="margin-top:16px" onclick="runDistraction()">🔍 Analyze Sequence</button>
+        </div>
+
+        <div class="card" id="distractionResultCard" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-height:280px">
+          <div style="font-size:64px;margin-bottom:12px">🔍</div>
+          <div style="font-size:16px;color:rgba(255,255,255,0.4)">Run analysis to see results</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ ANALYTICS ══════════════════ -->
+    <div class="panel" id="panel-analytics">
+      <div class="page-header">
+        <div class="page-title">Usage Analytics</div>
+        <div class="page-sub">Category breakdown & app-level usage stats</div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:16px">
+        <div class="card">
+          <div class="stat-label" style="margin-bottom:14px">Category Split</div>
+          <div id="catBars"></div>
+        </div>
+        <div class="card">
+          <div class="stat-label" style="margin-bottom:14px">Top Apps (minutes)</div>
+          <div id="appBars"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="stat-label" style="margin-bottom:12px">Insight Summary</div>
+        <div id="insightText" style="font-size:14px;line-height:1.8;color:rgba(255,255,255,0.7)"></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════ PROFILES ══════════════════ -->
+    <div class="panel" id="panel-profiles">
+      <div class="page-header">
+        <div class="page-title">Personalization Engine</div>
+        <div class="page-sub">Per-user behavioral profiles & AI coach advice</div>
+      </div>
+
+      <div class="user-grid" id="userGrid" style="margin-bottom:20px"></div>
+
+      <div class="card" id="profileDetail" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+          <div>
+            <div style="font-size:22px;font-weight:800" id="pName"></div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.4)" id="pPersona"></div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:32px;font-weight:800" id="pScore"></div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.3)">productivity score</div>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-bottom:20px">
+          <div class="stat-chip"><div class="stat-label">Peak Time</div><div class="stat-value" id="pPeak" style="font-size:16px"></div></div>
+          <div class="stat-chip"><div class="stat-label">Avg Session</div><div class="stat-value" id="pDur" style="font-size:16px"></div></div>
+          <div class="stat-chip"><div class="stat-label">Distraction Rate</div><div class="stat-value" id="pDistract" style="font-size:16px;color:var(--red)"></div></div>
+        </div>
+        <div class="stat-label" style="margin-bottom:10px">Top Apps</div>
+        <div id="pApps" style="margin-bottom:20px"></div>
+        <div style="background:rgba(0,229,255,0.07);border:1px solid rgba(0,229,255,0.25);border-radius:14px;padding:16px">
+          <div style="font-size:11px;font-weight:700;color:var(--cyan);margin-bottom:8px">🤖 AI COACH ADVICE</div>
+          <div style="font-size:14px;line-height:1.7" id="pAdvice"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── App meta ──────────────────────────────────────────────────────────────────
+const EMOJIS = {Instagram:'📸',WhatsApp:'💬',YouTube:'▶️',Chrome:'🌐',Gmail:'📧',LinkedIn:'💼',Netflix:'🎬'};
+const GRADS  = {
+  Instagram:'linear-gradient(135deg,#E1306C,#833AB4)',
+  WhatsApp: 'linear-gradient(135deg,#128C7E,#25D366)',
+  YouTube:  'linear-gradient(135deg,#FF0000,#CC0000)',
+  Chrome:   'linear-gradient(135deg,#4285F4,#1A73E8)',
+  Gmail:    'linear-gradient(135deg,#EA4335,#D93025)',
+  LinkedIn: 'linear-gradient(135deg,#0077B5,#005582)',
+  Netflix:  'linear-gradient(135deg,#E50914,#831010)',
+};
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPanel(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Dashboard init ────────────────────────────────────────────────────────────
+const DEMO_SESSIONS = [
+  {app:'Instagram',duration:25,time:'Night'},
+  {app:'YouTube',  duration:40,time:'Night'},
+  {app:'Instagram',duration:30,time:'Night'},
+  {app:'Netflix',  duration:60,time:'Night'},
+  {app:'Gmail',    duration:10,time:'Morning'},
+];
+
+async function loadDashboard() {
+  // Distraction check
+  try {
+    const r = await fetch('/distraction', {method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({sequence: DEMO_SESSIONS.map(s=>s.app)})});
+    const d = await r.json();
+    if (d.distraction_detected) {
+      document.getElementById('dash-alert').classList.add('visible');
+      document.getElementById('dash-alert-msg').textContent = d.alert;
+    }
+    document.getElementById('distractLevel').textContent   = d.distraction_detected ? d.pattern : 'Clean';
+    document.getElementById('distractEmoji').textContent   = d.distraction_detected ? '🚨' : '✅';
+    document.getElementById('distractPattern').textContent = `Social ${d.social_pct}% · Entertainment ${d.entertainment_pct}%`;
+  } catch(e) {}
+
+  // Full analyze
+  try {
+    const r = await fetch('/analyze', {method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({sessions: DEMO_SESSIONS})});
+    const d = await r.json();
+    const score = d.productivity_score;
+    const circumference = 2 * Math.PI * 50;
+    const offset = circumference - (score / 100) * circumference;
+    const color = score >= 60 ? '#00E676' : score >= 35 ? '#FFAB40' : '#FF5252';
+
+    document.getElementById('scoreCircle').style.strokeDashoffset = offset;
+    document.getElementById('scoreCircle').style.stroke = color;
+    document.getElementById('scoreNum').textContent = score;
+    document.getElementById('scoreNum').style.color = color;
+    document.getElementById('scoreTrend').textContent = d.score_trend;
+    document.getElementById('behaviorType').textContent = d.behavior_type;
+    document.getElementById('behaviorStat').textContent = d.behavior_type;
+    document.getElementById('distractRateStat').textContent = d.distraction_level;
+  } catch(e) {
+    document.getElementById('scoreNum').textContent = '28';
+    document.getElementById('scoreTrend').textContent = 'Declining';
+    document.getElementById('behaviorType').textContent = 'Night Binger';
+  }
+}
+
+// ── Quick predict (dashboard) ─────────────────────────────────────────────────
+async function dashQuickPredict() {
+  const btn = document.getElementById('dashPredBtn');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const r = await fetch('/predict', {method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        previous_app:    document.getElementById('dash_app').value,
+        time_of_day:     document.getElementById('dash_time').value,
+        day_of_week:     'Monday', usage_frequency: 'Medium'
+      })});
+    const d = await r.json();
+    document.getElementById('dashResEmoji').textContent = EMOJIS[d.predicted_app] || '📱';
+    document.getElementById('dashResApp').textContent   = d.predicted_app;
+    document.getElementById('dashResIv').textContent    = d.intervention || '';
+    document.getElementById('dashResult').style.display = 'block';
+    document.getElementById('lastPred').textContent     = d.predicted_app;
+  } catch(e) { alert('Server error'); }
+  btn.disabled = false; btn.textContent = '⚡ Quick Predict';
+}
+
+// ── Full predict ──────────────────────────────────────────────────────────────
+async function runPredict() {
+  const btn = document.getElementById('predBtn');
+  btn.disabled = true; btn.textContent = 'Predicting...';
+  try {
+    const r = await fetch('/predict', {method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        previous_app:    document.getElementById('p_app').value,
+        time_of_day:     document.getElementById('p_time').value,
+        day_of_week:     document.getElementById('p_day').value,
+        usage_frequency: document.getElementById('p_freq').value,
+      })});
+    const d = await r.json();
+    const card = document.getElementById('predResult');
+    card.style.background = GRADS[d.predicted_app] || '#1E1E2E';
+    document.getElementById('resEmoji').textContent = EMOJIS[d.predicted_app] || '📱';
+    document.getElementById('resApp').textContent   = d.predicted_app;
+    document.getElementById('resCat').textContent   = d.category;
+    document.getElementById('resConf').textContent  = (d.confidence*100).toFixed(1)+'% confidence';
+    card.classList.add('show');
+    if (d.intervention) {
+      document.getElementById('ivText').textContent = d.intervention;
+      document.getElementById('ivSub').textContent  = d.warning || '';
+      document.getElementById('resIv').classList.add('show');
+    } else {
+      document.getElementById('resIv').classList.remove('show');
+    }
+  } catch(e) { alert('Cannot reach server. Is Flask running?'); }
+  btn.disabled = false; btn.textContent = '✨ Predict Next App';
+}
+
+// ── Distraction sequence ──────────────────────────────────────────────────────
+const APPS = ['Instagram','WhatsApp','YouTube','Chrome','Gmail','LinkedIn','Netflix'];
+function buildSequenceSlots() {
+  const c = document.getElementById('seqSlots');
+  for (let i = 0; i < 5; i++) {
+    const sel = document.createElement('select');
+    sel.id = `seq_${i}`;
+    APPS.forEach((a,j) => {
+      const o = document.createElement('option');
+      o.value = a; o.textContent = (EMOJIS[a]||'📱') + ' ' + a;
+      if (j === i % APPS.length) o.selected = true;
+      sel.appendChild(o);
+    });
+    Object.assign(sel.style, {width:'100%',padding:'10px 14px',background:'#1A1A2E',border:'1px solid rgba(255,255,255,0.07)',borderRadius:'10px',color:'#fff',fontFamily:'Inter,sans-serif',fontSize:'14px',outline:'none'});
+    c.appendChild(sel);
+  }
+}
+
+async function runDistraction() {
+  const seq = [0,1,2,3,4].map(i => document.getElementById(`seq_${i}`).value);
+  try {
+    const r = await fetch('/distraction', {method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({sequence: seq})});
+    const d = await r.json();
+    const card = document.getElementById('distractionResultCard');
+    const color = d.distraction_detected ? '#FF5252' : '#00E676';
+    card.innerHTML = `
+      <div style="font-size:64px;margin-bottom:12px">${d.distraction_detected ? '🚨' : '✅'}</div>
+      <div style="font-size:18px;font-weight:800;color:${color};margin-bottom:8px">
+        ${d.distraction_detected ? d.pattern : 'No Distraction'}
+      </div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:16px">
+        ${d.alert || 'Your usage pattern looks healthy!'}
+      </div>
+      <div style="display:flex;gap:16px;justify-content:center">
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#FF5252">${d.social_pct}%</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4)">Social</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:800;color:#FFAB40">${d.entertainment_pct}%</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4)">Entertainment</div>
+        </div>
+      </div>
+    `;
+  } catch(e) { alert('Server error'); }
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+const ANALYTICS_DATA = {
+  categories: { Social: 73, Productivity: 45, Entertainment: 95 },
+  apps: { Instagram: 25, YouTube: 40, Gmail: 15, Chrome: 20, Netflix: 35, WhatsApp: 18, LinkedIn: 10 }
+};
+const CAT_COLORS = { Social: '#FF5252', Productivity: '#00E676', Entertainment: '#FFAB40' };
+const APP_COLORS = { Instagram:'#E1306C', YouTube:'#FF0000', Gmail:'#EA4335', Chrome:'#4285F4', Netflix:'#E50914', WhatsApp:'#25D366', LinkedIn:'#0077B5' };
+
+function buildAnalytics() {
+  const total = Object.values(ANALYTICS_DATA.categories).reduce((a,b)=>a+b,0);
+  const catEl = document.getElementById('catBars');
+  Object.entries(ANALYTICS_DATA.categories).forEach(([k,v]) => {
+    catEl.innerHTML += `<div class="bar-wrap"><div class="bar-label" style="font-size:13px">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${v/total*100}%;background:${CAT_COLORS[k]}"></div></div><div class="bar-val">${Math.round(v/total*100)}%</div></div>`;
+  });
+  const maxApp = Math.max(...Object.values(ANALYTICS_DATA.apps));
+  const appEl = document.getElementById('appBars');
+  Object.entries(ANALYTICS_DATA.apps).forEach(([k,v]) => {
+    appEl.innerHTML += `<div class="bar-wrap"><div class="bar-label" style="font-size:13px">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${v/maxApp*100}%;background:${APP_COLORS[k]}"></div></div><div class="bar-val">${v}m</div></div>`;
+  });
+  const social = ANALYTICS_DATA.categories.Social;
+  const prod   = ANALYTICS_DATA.categories.Productivity;
+  const score  = Math.round(prod/(social+prod)*100);
+  document.getElementById('insightText').innerHTML = `
+    📊 You spent <strong>${ANALYTICS_DATA.apps.Instagram + ANALYTICS_DATA.apps.WhatsApp}m</strong> on social apps today — your highest usage.<br>
+    🎯 Productivity score: <strong style="color:#00E676">${score}%</strong>. Increase Chrome/Gmail time to improve.<br>
+    ⚠️ Night usage dominates (Netflix ${ANALYTICS_DATA.apps.Netflix}m, YouTube ${ANALYTICS_DATA.apps.YouTube}m). <strong>Consider a sleep timer.</strong><br>
+    💡 Recommendation: Shift morning sessions to <strong>LinkedIn or Gmail</strong> for higher behavioral scores.
+  `;
+}
+
+// ── Profiles ──────────────────────────────────────────────────────────────────
+const DEMO_PROFILES = {
+  user_001: {persona:'Night Binger',peak_time:'Night',avg_duration:42.5,avg_productivity_score:30,distraction_rate_pct:68,top_apps:{Netflix:182,YouTube:145,Instagram:120}},
+  user_002: {persona:'Morning Worker',peak_time:'Morning',avg_duration:22,avg_productivity_score:78,distraction_rate_pct:18,top_apps:{Gmail:195,Chrome:160,LinkedIn:90}},
+  user_003: {persona:'Social Butterfly',peak_time:'Evening',avg_duration:35,avg_productivity_score:42,distraction_rate_pct:55,top_apps:{Instagram:200,WhatsApp:175,YouTube:130}},
+  user_004: {persona:'Balanced User',peak_time:'Afternoon',avg_duration:28,avg_productivity_score:61,distraction_rate_pct:30,top_apps:{Chrome:150,Gmail:140,YouTube:120}},
+};
+const USER_EMOJIS = {user_001:'🌙',user_002:'☀️',user_003:'📱',user_004:'⚖️'};
+const ADVICE = {
+  user_001: '⚠️ High distraction detected! You binge content late at night. Set a bedtime limit of 15 min for Netflix/YouTube and switch your phone to grayscale after 10 PM.',
+  user_002: '✅ Excellent focus profile! You are a Morning Worker. Protect your morning deep work block — avoid notifications before 10 AM to maintain this streak.',
+  user_003: '🟡 Moderate distraction — social loop detected. Use the 20-20-20 rule: every 20 mins of social media, take a 20-second productive break.',
+  user_004: '✅ Well-balanced digital habits. You shift between productivity and entertainment healthily. Keep your afternoon productivity streak strong by batching email/LinkedIn.',
+};
+
+let selectedUser = 'user_001';
+function buildProfiles() {
+  const grid = document.getElementById('userGrid');
+  Object.entries(DEMO_PROFILES).forEach(([uid, p]) => {
+    const div = document.createElement('div');
+    div.className = 'user-card' + (uid === selectedUser ? ' active' : '');
+    div.onclick = () => selectUser(uid);
+    div.innerHTML = `<div class="user-name">${USER_EMOJIS[uid]} ${p.persona}</div><div class="user-badge">Score: ${p.avg_productivity_score} · Distraction: ${p.distraction_rate_pct}%</div>`;
+    grid.appendChild(div);
+  });
+  selectUser(selectedUser);
+}
+
+function selectUser(uid) {
+  selectedUser = uid;
+  document.querySelectorAll('.user-card').forEach((c, i) => {
+    c.classList.toggle('active', Object.keys(DEMO_PROFILES)[i] === uid);
+  });
+  const p   = DEMO_PROFILES[uid];
+  const col = p.avg_productivity_score >= 60 ? '#00E676' : p.avg_productivity_score >= 35 ? '#FFAB40' : '#FF5252';
+  document.getElementById('pName').textContent    = USER_EMOJIS[uid] + ' ' + uid;
+  document.getElementById('pPersona').textContent = p.persona;
+  document.getElementById('pScore').textContent   = p.avg_productivity_score;
+  document.getElementById('pScore').style.color   = col;
+  document.getElementById('pPeak').textContent    = p.peak_time;
+  document.getElementById('pDur').textContent     = p.avg_duration + 'm';
+  document.getElementById('pDistract').textContent = p.distraction_rate_pct + '%';
+  document.getElementById('pAdvice').textContent  = ADVICE[uid];
+
+  const maxV = Math.max(...Object.values(p.top_apps));
+  document.getElementById('pApps').innerHTML = Object.entries(p.top_apps).map(([k,v]) =>
+    `<div class="bar-wrap"><div class="bar-label" style="font-size:13px">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${v/maxV*100}%;background:${APP_COLORS[k]||'#00E5FF'}"></div></div><div class="bar-val">${v}</div></div>`
+  ).join('');
+  document.getElementById('profileDetail').style.display = 'block';
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+window.onload = () => {
+  loadDashboard();
+  buildSequenceSlots();
+  buildAnalytics();
+  buildProfiles();
+};
+</script>
+</body>
+</html>
