@@ -1,9 +1,11 @@
 {
-  "rf_features": [
+  "version": "2.0.0-UnifiedRF",
+  "features": [
     "prev_enc",
     "time_enc",
     "day_enc",
     "freq_enc",
+    "cat_enc",
     "usage_duration",
     "battery_level",
     "screen_on_time_today",
@@ -11,39 +13,6 @@
     "is_weekend",
     "switch_count_last_hour",
     "notification_triggered"
-  ],
-  "km_features": [
-    "usage_duration",
-    "prev_enc",
-    "time_enc",
-    "cat_enc",
-    "screen_on_time_today",
-    "switch_count_last_hour",
-    "battery_level",
-    "notification_triggered"
-  ],
-  "dist_features": [
-    "prev_enc",
-    "time_enc",
-    "day_enc",
-    "freq_enc",
-    "usage_duration",
-    "cat_enc",
-    "battery_level",
-    "screen_on_time_today",
-    "session_number",
-    "is_weekend",
-    "switch_count_last_hour",
-    "notification_triggered"
-  ],
-  "apps": [
-    "Instagram",
-    "WhatsApp",
-    "YouTube",
-    "Chrome",
-    "Gmail",
-    "LinkedIn",
-    "Netflix"
   ],
   "app_map": {
     "Instagram": 0,
@@ -69,29 +38,47 @@
     "Saturday": 5,
     "Sunday": 6
   },
-  "freq_map": {
-    "Low": 0,
-    "Medium": 1,
-    "High": 2
-  },
   "cat_map": {
     "Social": 0,
     "Productivity": 1,
     "Entertainment": 2
   },
-  "categories": {
-    "Social": [
-      "Instagram",
-      "WhatsApp",
-      "LinkedIn"
-    ],
-    "Productivity": [
-      "Gmail",
-      "Chrome"
-    ],
-    "Entertainment": [
-      "YouTube",
-      "Netflix"
-    ]
+  "freq_map": {
+    "Low": 0,
+    "Medium": 1,
+    "High": 2
+  },
+  "persona_map": {
+    "Night Binger": 0,
+    "Morning Worker": 1,
+    "Social Butterfly": 2,
+    "Balanced User": 3,
+    "Notification Addict": 4,
+    "Weekend Warrior": 5
+  },
+  "distraction_map": {
+    "None": 0,
+    "Moderate": 1,
+    "High": 2
+  },
+  "targets": [
+    "next_app",
+    "distraction",
+    "persona",
+    "prod_bucket"
+  ],
+  "feature_importances": {
+    "prev_enc": 0.0502,
+    "time_enc": 0.0433,
+    "day_enc": 0.0435,
+    "freq_enc": 0.0283,
+    "cat_enc": 0.3412,
+    "usage_duration": 0.13,
+    "battery_level": 0.0831,
+    "screen_on_time_today": 0.0949,
+    "session_number": 0.0809,
+    "is_weekend": 0.0108,
+    "switch_count_last_hour": 0.027,
+    "notification_triggered": 0.0668
   }
 }

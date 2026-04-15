@@ -1,166 +1,155 @@
-import pandas as pd
+"""
+train.py — Unified Intelligence Loop v2
+Single Random Forest model that predicts:
+  1. next_app           (classification)
+  2. distraction_level  (classification: Low / Moderate / High)
+  3. persona            (classification)
+  4. productivity_score (regression → bucketed to int)
+
+Run: python train.py
+Saves: model/unified_model.joblib  +  model/config.json
+"""
+
+import os, json
 import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.multioutput import MultiOutputClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.cluster import KMeans
-from sklearn.metrics import accuracy_score
-import pickle, os, json
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.preprocessing import LabelEncoder
+import joblib
+
 from utils import generate_synthetic_data
 
-# ─── Encodings ────────────────────────────────────────────────────────────────
-APP_MAP  = {'Instagram': 0, 'WhatsApp': 1, 'YouTube': 2, 'Chrome': 3, 'Gmail': 4, 'LinkedIn': 5, 'Netflix': 6}
+# ─── Mappings ─────────────────────────────────────────────────────────────────
+APP_MAP  = {'Instagram': 0, 'WhatsApp': 1, 'YouTube': 2,
+            'Chrome': 3, 'Gmail': 4, 'LinkedIn': 5, 'Netflix': 6}
 TIME_MAP = {'Morning': 0, 'Afternoon': 1, 'Evening': 2, 'Night': 3}
-DAY_MAP  = {'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 'Thursday': 3, 'Friday': 4, 'Saturday': 5, 'Sunday': 6}
-FREQ_MAP = {'Low': 0, 'Medium': 1, 'High': 2}
+DAY_MAP  = {'Monday': 0, 'Tuesday': 1, 'Wednesday': 2, 'Thursday': 3,
+            'Friday': 4, 'Saturday': 5, 'Sunday': 6}
 CAT_MAP  = {'Social': 0, 'Productivity': 1, 'Entertainment': 2}
+FREQ_MAP = {'Low': 0, 'Medium': 1, 'High': 2}
+PERSONA_MAP = {
+    'Night Binger': 0, 'Morning Worker': 1, 'Social Butterfly': 2,
+    'Balanced User': 3, 'Notification Addict': 4, 'Weekend Warrior': 5
+}
+DISTRACTION_MAP = {'None': 0, 'Moderate': 1, 'High': 2}
+
+FEATURE_NAMES = [
+    'prev_enc', 'time_enc', 'day_enc', 'freq_enc', 'cat_enc',
+    'usage_duration', 'battery_level', 'screen_on_time_today',
+    'session_number', 'is_weekend', 'switch_count_last_hour',
+    'notification_triggered'
+]
+
+APP_CAT = {
+    'Instagram': 'Social',   'WhatsApp': 'Social',    'LinkedIn': 'Social',
+    'Gmail': 'Productivity', 'Chrome': 'Productivity',
+    'YouTube': 'Entertainment', 'Netflix': 'Entertainment',
+}
 
 
-def train_models():
+def _distraction_label(row) -> str:
+    """Derive 3-class distraction label from dataset flags."""
+    if not row['distraction_detected']:
+        return 'None'
+    if row['distraction_pattern'] in ('Social Loop', 'App Hopping'):
+        return 'High'
+    return 'Moderate'
+
+
+def train():
     os.makedirs('model', exist_ok=True)
 
-    # ── 1. Load / Generate ────────────────────────────────────────────────
+    # ── 1. Data ────────────────────────────────────────────────────────────
     if not os.path.exists('dataset/app_usage.csv'):
-        generate_synthetic_data(5000)
+        print("[*] Generating synthetic dataset (15,000 rows)...")
+        generate_synthetic_data(15000)
     df = pd.read_csv('dataset/app_usage.csv')
-    print(f"📊 Dataset: {len(df)} rows × {len(df.columns)} cols | {df['user_id'].nunique()} users")
+    print(f"[OK] Loaded {len(df):,} rows x {len(df.columns)} columns")
 
-    # ── 2. Encode base features ───────────────────────────────────────────
+    # ── 2. Feature engineering ─────────────────────────────────────────────
     df['prev_enc']  = df['previous_app'].map(APP_MAP)
     df['time_enc']  = df['time_of_day'].map(TIME_MAP)
     df['day_enc']   = df['day_of_week'].map(DAY_MAP)
-    df['freq_enc']  = df['usage_frequency'].map(FREQ_MAP)
-    df['next_enc']  = df['next_app'].map(APP_MAP)
+    df['freq_enc']  = df.get('usage_frequency', pd.Series('Medium', index=df.index)).map(FREQ_MAP).fillna(1).astype(int)
     df['cat_enc']   = df['app_category'].map(CAT_MAP)
-    df = df.dropna(subset=['prev_enc', 'time_enc', 'day_enc', 'freq_enc', 'next_enc'])
 
-    # New numeric features (already numeric, just ensure clean)
-    num_feats = ['usage_duration', 'battery_level', 'screen_on_time_today',
-                 'session_number', 'is_weekend', 'switch_count_last_hour',
-                 'notification_triggered']
-    for col in num_feats:
-        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    # ── 3. Targets ─────────────────────────────────────────────────────────
+    df['next_app_enc']     = df['next_app'].map(APP_MAP)
+    df['distract_enc']     = df.apply(_distraction_label, axis=1).map(DISTRACTION_MAP)
+    df['persona_enc']      = df['persona'].map(PERSONA_MAP)
+    # Productivity score → bucketed 0/1/2 (Low / Medium / High)
+    df['prod_bucket']      = pd.cut(df['productivity_score'],
+                                    bins=[0, 40, 65, 100],
+                                    labels=[0, 1, 2]).astype(int)
 
-    # ── 3. Random Forest — Next App Prediction (11 features) ─────────────
-    print("\n🤖 Training Random Forest (11 features)...")
-    RF_FEATURES = ['prev_enc', 'time_enc', 'day_enc', 'freq_enc',
-                   'usage_duration', 'battery_level', 'screen_on_time_today',
-                   'session_number', 'is_weekend', 'switch_count_last_hour',
-                   'notification_triggered']
-    X  = df[RF_FEATURES]
-    y  = df['next_enc']
-    Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.2, random_state=42)
-    rf = RandomForestClassifier(n_estimators=200, max_depth=15, random_state=42, n_jobs=-1)
-    rf.fit(Xtr, ytr)
-    rf_acc = accuracy_score(yte, rf.predict(Xte))
-    print(f"   RF Accuracy : {rf_acc:.4f}  ({rf_acc:.2%})")
-    pickle.dump(rf, open('model/rf_model.pkl', 'wb'))
+    df.dropna(subset=FEATURE_NAMES + ['next_app_enc', 'distract_enc', 'persona_enc', 'prod_bucket'], inplace=True)
 
-    # Feature importances
-    importances = dict(zip(RF_FEATURES, rf.feature_importances_))
-    print("   Top features:", sorted(importances.items(), key=lambda x:-x[1])[:5])
+    X = df[FEATURE_NAMES].values
+    Y = df[['next_app_enc', 'distract_enc', 'persona_enc', 'prod_bucket']].values
 
-    # ── 4. Markov Chain (persist full matrix) ─────────────────────────────
-    print("\n🔗 Building Markov Chain...")
-    n = len(APP_MAP)
-    mat = np.zeros((n, n))
-    for _, row in df.iterrows():
-        mat[int(row['prev_enc'])][int(row['next_enc'])] += 1
-    row_sums = mat.sum(axis=1, keepdims=True)
-    row_sums[row_sums == 0] = 1
-    mat /= row_sums
-    pickle.dump(mat, open('model/markov_matrix.pkl', 'wb'))
-    print("   Saved.")
+    X_train, X_test, Y_train, Y_test = train_test_split(
+        X, Y, test_size=0.15, random_state=42, stratify=Y[:, 0]
+    )
 
-    # ── 5. K-Means Clustering (8 features) ───────────────────────────────
-    print("\n🎯 K-Means Clustering (8 features, 4 clusters)...")
-    KM_FEATURES = ['usage_duration', 'prev_enc', 'time_enc', 'cat_enc',
-                   'screen_on_time_today', 'switch_count_last_hour',
-                   'battery_level', 'notification_triggered']
-    cluster_X = df[KM_FEATURES].fillna(0)
-    kmeans = KMeans(n_clusters=4, random_state=42, n_init=15)
-    kmeans.fit(cluster_X)
-    pickle.dump(kmeans, open('model/kmeans_model.pkl', 'wb'))
-    print("   Saved.")
+    # ── 4. Unified Random Forest ──────────────────────────────────────────
+    print("\n[*] Training Unified Random Forest (multi-output)...")
+    base_rf = RandomForestClassifier(
+        n_estimators=300,
+        max_depth=18,
+        min_samples_split=4,
+        min_samples_leaf=2,
+        max_features='sqrt',
+        class_weight='balanced',
+        n_jobs=-1,
+        random_state=42
+    )
+    from sklearn.multioutput import MultiOutputClassifier
+    model = MultiOutputClassifier(base_rf, n_jobs=-1)
+    model.fit(X_train, Y_train)
 
-    # ── 6. Distraction Classifier GBM (12 features) ───────────────────────
-    print("\n⚠️  Training Distraction Detector (12 features)...")
-    DIST_FEATURES = ['prev_enc', 'time_enc', 'day_enc', 'freq_enc',
-                     'usage_duration', 'cat_enc', 'battery_level',
-                     'screen_on_time_today', 'session_number', 'is_weekend',
-                     'switch_count_last_hour', 'notification_triggered']
-    Xd  = df[DIST_FEATURES]
-    yd  = df['distraction_detected'].astype(int)
-    Xdtr, Xdte, ydtr, ydte = train_test_split(Xd, yd, test_size=0.2, random_state=42)
-    gbm = GradientBoostingClassifier(n_estimators=150, learning_rate=0.1, max_depth=5, random_state=42)
-    gbm.fit(Xdtr, ydtr)
-    dist_acc = accuracy_score(ydte, gbm.predict(Xdte))
-    print(f"   Distraction Accuracy: {dist_acc:.4f}  ({dist_acc:.2%})")
-    pickle.dump(gbm, open('model/distraction_model.pkl', 'wb'))
+    # ── 5. Accuracy per target ─────────────────────────────────────────────
+    Y_pred = model.predict(X_test)
+    targets = ['next_app', 'distraction', 'persona', 'prod_bucket']
+    print("\n[ACCURACY] Per-target accuracy:")
+    for i, t in enumerate(targets):
+        acc = accuracy_score(Y_test[:, i], Y_pred[:, i])
+        print(f"   {t:<18}: {acc:.2%}")
 
-    # ── 7. User Profiles (all 19 columns aggregated) ──────────────────────
-    print("\n👤 Building rich user profiles...")
-    profiles = {}
-    for uid, grp in df.groupby('user_id'):
-        top_apps       = grp['next_app'].value_counts().head(3).to_dict()
-        peak_time      = grp['time_of_day'].mode()[0]
-        avg_duration   = round(grp['usage_duration'].mean(), 1)
-        avg_prod       = round(grp['productivity_score'].mean(), 1)
-        distract_rate  = round(grp['distraction_detected'].mean() * 100, 1)
-        avg_battery    = round(grp['battery_level'].mean(), 1)
-        avg_screen     = round(grp['screen_on_time_today'].mean(), 1)
-        avg_switches   = round(grp['switch_count_last_hour'].mean(), 1)
-        notif_rate     = round(grp['notification_triggered'].mean() * 100, 1)
-        weekend_score  = round(grp[grp['is_weekend'] == 1]['productivity_score'].mean(), 1) if grp['is_weekend'].sum() > 0 else avg_prod
-        weekday_score  = round(grp[grp['is_weekend'] == 0]['productivity_score'].mean(), 1)
-        persona        = grp['persona'].iloc[0]
-        top_dist_patt  = grp[grp['distraction_detected']]['distraction_pattern'].value_counts().idxmax() \
-                         if grp['distraction_detected'].any() else 'None'
+    next_app_acc = accuracy_score(Y_test[:, 0], Y_pred[:, 0])
+    print(f"\n[OK] Primary (next_app) accuracy: {next_app_acc:.2%}")
 
-        profiles[uid] = {
-            'persona':              persona,
-            'top_apps':             top_apps,
-            'peak_time':            peak_time,
-            'avg_duration':         avg_duration,
-            'avg_productivity_score': avg_prod,
-            'distraction_rate_pct': distract_rate,
-            'avg_battery_level':    avg_battery,
-            'avg_screen_time_day':  avg_screen,
-            'avg_switch_count':     avg_switches,
-            'notification_rate_pct': notif_rate,
-            'weekend_productivity': weekend_score,
-            'weekday_productivity': weekday_score,
-            'top_distraction_pattern': top_dist_patt,
-        }
+    # ── 6. Feature importances (from next_app estimator) ──────────────────
+    importances = model.estimators_[0].feature_importances_
+    feat_imp = dict(zip(FEATURE_NAMES, [round(float(v), 4) for v in importances]))
+    print("\n[INFO] Feature importances (next_app):")
+    for k, v in sorted(feat_imp.items(), key=lambda x: -x[1]):
+        print(f"   {k:<30}: {v:.4f}")
 
-    with open('model/user_profiles.json', 'w') as f:
-        json.dump(profiles, f, indent=2)
-    print(f"   Saved profiles for {len(profiles)} users.")
+    # ── 7. Save model + config ─────────────────────────────────────────────
+    joblib.dump(model, 'model/unified_model.joblib', compress=3)
+    print("[SAVED] model/unified_model.joblib")
 
-    # ── 8. Save feature lists for API ─────────────────────────────────────
-    meta = {
-        'rf_features':   RF_FEATURES,
-        'km_features':   KM_FEATURES,
-        'dist_features': DIST_FEATURES,
-        'apps':          list(APP_MAP.keys()),
-        'app_map':       APP_MAP,
-        'time_map':      TIME_MAP,
-        'day_map':       DAY_MAP,
-        'freq_map':      FREQ_MAP,
-        'cat_map':       CAT_MAP,
-        'categories': {
-            'Social':        ['Instagram', 'WhatsApp', 'LinkedIn'],
-            'Productivity':  ['Gmail', 'Chrome'],
-            'Entertainment': ['YouTube', 'Netflix'],
-        }
+    config = {
+        'version': '2.0.0-UnifiedRF',
+        'features': FEATURE_NAMES,
+        'app_map':  APP_MAP,
+        'time_map': TIME_MAP,
+        'day_map':  DAY_MAP,
+        'cat_map':  CAT_MAP,
+        'freq_map': FREQ_MAP,
+        'persona_map': PERSONA_MAP,
+        'distraction_map': DISTRACTION_MAP,
+        'targets': targets,
+        'feature_importances': feat_imp,
     }
     with open('model/config.json', 'w') as f:
-        json.dump(meta, f, indent=2)
-
-    print(f"\n✅ All models trained & saved to model/")
-    print(f"   RF Accuracy:          {rf_acc:.2%}  (11 features)")
-    print(f"   Distraction Accuracy: {dist_acc:.2%} (12 features)")
-    print(f"   Dataset columns:      {len(df.columns)}")
+        json.dump(config, f, indent=2)
+    print("[SAVED] model/config.json")
+    print("\n[DONE] Training complete! Run `python app.py` to start the API.\n")
 
 
 if __name__ == '__main__':
-    train_models()
+    train()
